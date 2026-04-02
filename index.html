@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>留学咨询 · 学生档案</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #F7F5F0;
+    --surface: #FFFFFF;
+    --surface2: #F0EDE6;
+    --border: #E2DDD5;
+    --border2: #CBC5BB;
+    --text: #1A1714;
+    --text2: #6B6560;
+    --text3: #9E9891;
+    --accent: #2D5016;
+    --accent-light: #EAF0E4;
+    --accent-mid: #4A7C28;
+    --danger: #8B2020;
+    --danger-light: #FBF0F0;
+    --warn: #7A4F10;
+    --warn-light: #FBF4E8;
+    --radius: 10px;
+    --radius-lg: 16px;
+    --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'DM Sans', 'PingFang SC', 'Hiragino Sans GB', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+  }
+
+  .app-layout {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    min-height: 100vh;
+  }
+
+  /* Sidebar */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 2rem 0;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .logo {
+    padding: 0 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .logo-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+  }
+
+  .logo-sub {
+    font-size: 12px;
+    color: var(--text3);
+    margin-top: 3px;
+    letter-spacing: 0.03em;
+  }
+
+  .nav { flex: 1; padding: 0 0.75rem; }
+
+  .nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: var(--radius);
+    cursor: pointer;
+    font-size: 14px;
+    color: var(--text2);
+    transition: all 0.15s;
+    margin-bottom: 2px;
+  }
+
+  .nav-item:hover { background: var(--surface2); color: var(--text); }
+  .nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+
+  .nav-icon {
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+
+  .nav-badge {
+    margin-left: auto;
+    background: var(--accent-light);
+    color: var(--accent-mid);
+    font-size: 11px;
+    padding: 1px 7px;
+    border-radius: 99px;
+    font-weight: 500;
+  }
+
+  .sidebar-bottom {
+    padding: 1rem 1.25rem 0;
+    border-top: 1px solid var(--border);
+    margin-top: 1rem;
+  }
+
+  .api-status {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: var(--text3);
+    cursor: pointer;
+    padding: 8px 0;
+  }
+
+  .api-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--border2);
+    flex-shrink: 0;
+  }
+
+  .api-dot.ok { background: #5A9E2F; }
+  .api-dot.err { background: var(--danger); }
+
+  /* Main */
+  .main { padding: 2.5rem 2rem; max-width: 900px; }
+
+  .page { display: none; }
+  .page.active { display: block; }
+
+  .page-header { margin-bottom: 2rem; }
+  .page-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--text);
+  }
+  .page-desc { font-size: 14px; color: var(--text2); margin-top: 5px; line-height: 1.6; }
+
+  /* Upload area */
+  .upload-zone {
+    border: 1.5px dashed var(--border2);
+    border-radius: var(--radius-lg);
+    padding: 2.5rem 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent-mid); background: var(--accent-light); }
+  .upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+
+  .upload-icon-wrap {
+    width: 52px; height: 52px;
+    background: var(--surface2);
+    border-radius: var(--radius);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 22px;
+    margin: 0 auto 14px;
+  }
+
+  .upload-title { font-size: 15px; font-weight: 500; color: var(--text); }
+  .upload-sub { font-size: 13px; color: var(--text3); margin-top: 5px; }
+
+  .preview-grid {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-top: 16px; justify-content: center;
+  }
+
+  .preview-thumb {
+    width: 80px; height: 80px;
+    object-fit: cover;
+    border-radius: var(--radius);
+    border: 1px solid var(--border);
+  }
+
+  /* Steps */
+  .steps {
+    display: flex; align-items: center;
+    gap: 0; margin-bottom: 1.75rem;
+  }
+
+  .step {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 13px; color: var(--text3);
+  }
+
+  .step.active { color: var(--accent); }
+  .step.done { color: var(--text2); }
+
+  .step-num {
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--surface2);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 11px; font-weight: 500;
+    flex-shrink: 0;
+  }
+
+  .step.active .step-num { background: var(--accent); color: white; }
+  .step.done .step-num { background: var(--accent-light); color: var(--accent); }
+
+  .step-line { flex: 1; height: 1px; background: var(--border); margin: 0 10px; }
+
+  /* OCR progress */
+  .ocr-progress {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem 1.5rem;
+    margin: 1rem 0;
+    display: none;
+  }
+
+  .ocr-progress.show { display: block; }
+
+  .progress-bar-wrap {
+    height: 4px; background: var(--surface2);
+    border-radius: 99px; margin-top: 10px; overflow: hidden;
+  }
+
+  .progress-bar {
+    height: 100%; background: var(--accent-mid);
+    border-radius: 99px; transition: width 0.3s;
+    width: 0%;
+  }
+
+  .progress-label { font-size: 13px; color: var(--text2); display: flex; justify-content: space-between; }
+
+  /* Buttons */
+  .btn {
+    padding: 9px 18px;
+    border-radius: var(--radius);
+    border: 1px solid var(--border2);
+    font-size: 14px;
+    cursor: pointer;
+    background: var(--surface);
+    color: var(--text);
+    font-family: inherit;
+    transition: all 0.15s;
+    display: inline-flex; align-items: center; gap: 6px;
+  }
+
+  .btn:hover { background: var(--surface2); border-color: var(--border2); }
+  .btn:active { transform: scale(0.98); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-primary {
+    background: var(--accent); color: white;
+    border-color: var(--accent);
+  }
+
+  .btn-primary:hover { background: var(--accent-mid); border-color: var(--accent-mid); }
+
+  .btn-sm { padding: 6px 12px; font-size: 13px; }
+  .btn-danger { color: var(--danger); border-color: #E8BABA; }
+  .btn-danger:hover { background: var(--danger-light); }
+
+  .btn-row { display: flex; gap: 8px; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+  /* Form */
+  .form-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.5rem;
+    margin-top: 1.25rem;
+    box-shadow: var(--shadow);
+  }
+
+  .form-section-title {
+    font-size: 12px; font-weight: 500;
+    color: var(--text3); letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin-bottom: 12px; margin-top: 20px;
+  }
+
+  .form-section-title:first-child { margin-top: 0; }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+  .form-group { display: flex; flex-direction: column; gap: 5px; }
+  .form-group.full { grid-column: 1 / -1; }
+
+  .form-group label {
+    font-size: 12px; color: var(--text2);
+    font-weight: 500;
+  }
+
+  .form-group input,
+  .form-group textarea,
+  .form-group select {
+    font-family: inherit;
+    font-size: 14px;
+    padding: 8px 11px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text);
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .form-group input:focus,
+  .form-group textarea:focus {
+    border-color: var(--accent-mid);
+  }
+
+  .form-group textarea { resize: vertical; min-height: 80px; line-height: 1.6; }
+
+  .ocr-text-preview {
+    background: var(--surface2);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 12px;
+    line-height: 1.7;
+    color: var(--text2);
+    max-height: 140px;
+    overflow-y: auto;
+    border: 1px solid var(--border);
+    white-space: pre-wrap;
+    word-break: break-all;
+    margin-bottom: 4px;
+  }
+
+  /* Status */
+  .status-inline {
+    font-size: 13px; padding: 4px 0;
+  }
+  .status-ok { color: #4A7C28; }
+  .status-err { color: var(--danger); }
+  .status-info { color: var(--text2); }
+
+  .spinner {
+    display: inline-block;
+    width: 14px; height: 14px;
+    border: 2px solid var(--border);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* Records table */
+  .records-toolbar {
+    display: flex; gap: 10px; align-items: center;
+    margin-bottom: 1rem; flex-wrap: wrap;
+  }
+
+  .search-input {
+    flex: 1; min-width: 160px;
+    font-family: inherit; font-size: 14px;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text); outline: none;
+  }
+
+  .search-input:focus { border-color: var(--accent-mid); }
+
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    box-shadow: var(--shadow);
+  }
+
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+  th {
+    text-align: left;
+    padding: 10px 14px;
+    font-size: 11px; font-weight: 500;
+    color: var(--text3);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+  }
+
+  td {
+    padding: 11px 14px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+    color: var(--text);
+    line-height: 1.5;
+  }
+
+  tr:last-child td { border-bottom: none; }
+  tbody tr:hover td { background: #FAFAF7; }
+
+  .td-muted { color: var(--text3); }
+  .td-sub { font-size: 12px; color: var(--text2); margin-top: 2px; }
+
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 99px;
+    background: var(--accent-light);
+    color: var(--accent);
+    font-weight: 500;
+  }
+
+  .del-btn {
+    opacity: 0; background: none; border: none;
+    color: var(--danger); cursor: pointer;
+    font-size: 16px; padding: 2px 4px;
+    border-radius: 4px; transition: all 0.1s;
+    font-family: inherit;
+  }
+
+  tr:hover .del-btn { opacity: 0.6; }
+  .del-btn:hover { opacity: 1 !important; background: var(--danger-light); }
+
+  .empty-state {
+    text-align: center;
+    padding: 3.5rem 1rem;
+    color: var(--text3);
+    font-size: 14px;
+  }
+
+  .empty-icon { font-size: 32px; margin-bottom: 12px; }
+
+  /* API key modal */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: rgba(10, 8, 5, 0.45);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 100;
+    display: none;
+  }
+
+  .modal-overlay.show { display: flex; }
+
+  .modal {
+    background: var(--surface);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    width: 90%; max-width: 460px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.18);
+  }
+
+  .modal-title {
+    font-family: 'Noto Serif SC', serif;
+    font-size: 17px; font-weight: 500;
+    margin-bottom: 8px;
+  }
+
+  .modal-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 1.25rem; }
+
+  .modal-desc a { color: var(--accent); text-decoration: none; }
+  .modal-desc a:hover { text-decoration: underline; }
+
+  .modal input {
+    width: 100%; font-family: inherit; font-size: 14px;
+    padding: 9px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    color: var(--text); outline: none;
+    margin-bottom: 10px;
+  }
+
+  .modal input:focus { border-color: var(--accent-mid); }
+
+  .modal-note {
+    font-size: 12px; color: var(--text3);
+    margin-bottom: 1.25rem; line-height: 1.6;
+  }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 2rem; right: 2rem;
+    background: var(--text);
+    color: var(--bg);
+    padding: 10px 18px;
+    border-radius: var(--radius);
+    font-size: 14px;
+    transform: translateY(8px);
+    opacity: 0;
+    transition: all 0.25s;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast.ok { background: var(--accent); }
+  .toast.err { background: var(--danger); }
+
+  /* Import note */
+  .info-card {
+    background: var(--warn-light);
+    border: 1px solid #E8D0A8;
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    font-size: 13px;
+    color: var(--warn);
+    line-height: 1.6;
+    margin-top: 1rem;
+  }
+
+  .mobile-api-btn { display: none; }
+
+  @media (max-width: 680px) {
+    .app-layout { grid-template-columns: 1fr; }
+    .sidebar { position: relative; height: auto; flex-direction: row; padding: 1rem; overflow-x: auto; }
+    .logo { display: none; }
+    .sidebar-bottom { display: none; }
+    .nav { display: flex; flex-direction: row; padding: 0; gap: 4px; }
+    .nav-item { white-space: nowrap; }
+    .mobile-api-btn { display: flex; margin-left: auto; }
+    .main { padding: 1.5rem 1rem; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-group.full { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-layout">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">留学咨询<br>学生档案</div>
+      <div class="logo-sub">Study Abroad CRM</div>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-item active" onclick="goPage('add')">
+        <span class="nav-icon">＋</span>
+        <span>新增记录</span>
+      </div>
+      <div class="nav-item" onclick="goPage('records')">
+        <span class="nav-icon">≡</span>
+        <span>所有记录</span>
+        <span class="nav-badge" id="nav-count">0</span>
+      </div>
+      <div class="nav-item mobile-api-btn" onclick="openApiModal()" id="mobileApiBtn">
+        <span class="nav-icon">⚙</span>
+        <span id="mobileApiText">API Key</span>
+        <span class="api-dot" id="mobileApiDot" style="margin-left:4px"></span>
+      </div>
+    </nav>
+
+    <div class="sidebar-bottom">
+      <div class="api-status" onclick="openApiModal()">
+        <div class="api-dot" id="apiDot"></div>
+        <span id="apiStatusText">未配置 API Key</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+
+    <!-- Add page -->
+    <div class="page active" id="page-add">
+      <div class="page-header">
+        <div class="page-title">新增学生记录</div>
+        <div class="page-desc">上传微信聊天截图，自动提取信息；或直接手动填写。</div>
+      </div>
+
+      <div class="steps">
+        <div class="step active" id="step1">
+          <div class="step-num">1</div>
+          <span>上传截图</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step2">
+          <div class="step-num">2</div>
+          <span>OCR 识别</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step3">
+          <div class="step-num">3</div>
+          <span>AI 归类</span>
+        </div>
+        <div class="step-line"></div>
+        <div class="step" id="step4">
+          <div class="step-num">4</div>
+          <span>确认保存</span>
+        </div>
+      </div>
+
+      <div class="upload-zone" id="dropZone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+        <div class="upload-icon-wrap">📷</div>
+        <div class="upload-title">拖拽或点击上传截图</div>
+        <div class="upload-sub">支持多张图片 · PNG / JPG · 微信聊天截图</div>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="parseBtn" onclick="startPipeline()" disabled>
+          <span id="parseBtnIcon">✦</span>
+          <span id="parseBtnText">OCR + AI 解析</span>
+        </button>
+        <button class="btn" onclick="fillManual()">手动填写</button>
+        <span class="status-inline" id="pipelineStatus"></span>
+      </div>
+
+      <div class="ocr-progress" id="ocrProgress">
+        <div class="progress-label">
+          <span id="ocrMsg">正在识别文字...</span>
+          <span id="ocrPct">0%</span>
+        </div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar" id="ocrBar"></div>
+        </div>
+      </div>
+
+      <div id="formArea" style="display:none">
+        <div class="form-card">
+          <div class="form-section-title">识别文本（可供参考）</div>
+          <div class="ocr-text-preview" id="ocrTextPreview" style="display:none"></div>
+
+          <div class="form-section-title">基本信息</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>聊天日期</label>
+              <input type="date" id="f_date">
+            </div>
+            <div class="form-group">
+              <label>微信名</label>
+              <input type="text" id="f_wechat" placeholder="学生微信昵称">
+            </div>
+            <div class="form-group">
+              <label>真实姓名</label>
+              <input type="text" id="f_name" placeholder="如聊天中提到">
+            </div>
+          </div>
+
+          <div class="form-section-title">学术背景</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>本科院校</label>
+              <input type="text" id="f_school" placeholder="毕业或在读院校">
+            </div>
+            <div class="form-group">
+              <label>专业</label>
+              <input type="text" id="f_major" placeholder="本科专业">
+            </div>
+            <div class="form-group">
+              <label>GPA / 均分</label>
+              <input type="text" id="f_gpa" placeholder="如 3.7 / 87分">
+            </div>
+          </div>
+
+          <div class="form-section-title">申请意向</div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>目标国家</label>
+              <input type="text" id="f_country" placeholder="如 美国、英国、港新">
+            </div>
+            <div class="form-group">
+              <label>目标院校 / 项目</label>
+              <input type="text" id="f_target" placeholder="如 CMU MSCS、UCL MSc">
+            </div>
+            <div class="form-group full">
+              <label>申请内容概述</label>
+              <textarea id="f_content" placeholder="学生的申请诉求、方向、timeline 等"></textarea>
+            </div>
+            <div class="form-group full">
+              <label>意向 / 备注</label>
+              <textarea id="f_intent" placeholder="意向程度、跟进状态、其他备注..." style="min-height:64px"></textarea>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveRecord()">保存记录</button>
+          <button class="btn" onclick="resetAll()">重置</button>
+          <span class="status-inline" id="saveStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Records page -->
+    <div class="page" id="page-records">
+      <div class="page-header">
+        <div class="page-title">所有记录</div>
+        <div class="page-desc">查看、搜索已保存的学生档案，导出为 Excel。</div>
+      </div>
+
+      <div class="records-toolbar">
+        <input class="search-input" id="searchInput" placeholder="搜索微信名、姓名、院校、项目..." oninput="renderTable()">
+        <button class="btn btn-primary btn-sm" onclick="exportExcel()" id="exportBtn" disabled>导出 Excel</button>
+        <button class="btn btn-sm" onclick="importExcel()">导入已有 Excel</button>
+        <input type="file" id="importInput" accept=".xlsx,.xls" style="display:none" onchange="handleImport(this)">
+      </div>
+
+      <div class="table-wrap">
+        <div id="tableContainer">
+          <div class="empty-state">
+            <div class="empty-icon">📋</div>
+            <div>还没有记录</div>
+            <div style="margin-top:6px;font-size:12px">在「新增记录」页上传截图或手动填写</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-card" id="importNote" style="display:none">
+        已导入 <strong id="importCount">0</strong> 条记录，与现有数据合并。新增记录将追加到文件末尾。
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <div class="modal-title">配置硅基流动 API Key</div>
+    <div class="modal-desc">
+      AI 归类功能需要 API Key。前往
+      <a href="https://cloud.siliconflow.cn" target="_blank">cloud.siliconflow.cn</a>
+      注册并在「API 密钥」页面创建，国内直接访问，注册即有免费额度。<br><br>
+      Key 仅保存在您的浏览器本地（localStorage），不会上传到任何服务器。
+    </div>
+    <input type="password" id="apiKeyInput" placeholder="sk-...">
+    <div class="modal-note">没有 Key 也可以使用工具，只是 AI 归类功能不可用，需手动填写字段。</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveApiKey()">保存</button>
+      <button class="btn" onclick="closeApiModal()">取消</button>
+      <button class="btn btn-danger btn-sm" onclick="clearApiKey()" style="margin-left:auto">清除 Key</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+let records = JSON.parse(localStorage.getItem('consult_records') || '[]');
+let uploadedFiles = [];
+let ocrTexts = [];
+let currentPage = 'add';
+
+// --- Page nav ---
+function goPage(p) {
+  currentPage = p;
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', (i === 0 && p === 'add') || (i === 1 && p === 'records'));
+  });
+  if (p === 'records') renderTable();
+}
+
+// --- API Key ---
+function getApiKey() { return localStorage.getItem('consult_api_key') || ''; }
+
+function updateApiStatus() {
+  const key = getApiKey();
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiStatusText');
+  const mdot = document.getElementById('mobileApiDot');
+  const mtxt = document.getElementById('mobileApiText');
+  if (key) {
+    dot.className = 'api-dot ok'; txt.textContent = 'API Key 已配置';
+    if(mdot) mdot.className = 'api-dot ok';
+    if(mtxt) mtxt.textContent = 'Key 已配置';
+  } else {
+    dot.className = 'api-dot'; txt.textContent = '未配置 API Key';
+    if(mdot) mdot.className = 'api-dot err';
+    if(mtxt) mtxt.textContent = '配置 Key';
+  }
+}
+
+function openApiModal() {
+  document.getElementById('apiKeyInput').value = getApiKey();
+  document.getElementById('apiModal').classList.add('show');
+}
+
+function closeApiModal() { document.getElementById('apiModal').classList.remove('show'); }
+
+function saveApiKey() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  if (k) { localStorage.setItem('consult_api_key', k); toast('API Key 已保存', 'ok'); }
+  else { localStorage.removeItem('consult_api_key'); toast('已清除 Key'); }
+  updateApiStatus();
+  closeApiModal();
+}
+
+function clearApiKey() {
+  localStorage.removeItem('consult_api_key');
+  document.getElementById('apiKeyInput').value = '';
+  updateApiStatus();
+  toast('Key 已清除');
+  closeApiModal();
+}
+
+// --- File handling ---
+function handleFiles(files) {
+  uploadedFiles = Array.from(files);
+  ocrTexts = [];
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  uploadedFiles.forEach(f => {
+    const url = URL.createObjectURL(f);
+    const img = document.createElement('img');
+    img.src = url; img.className = 'preview-thumb';
+    grid.appendChild(img);
+  });
+  document.getElementById('parseBtn').disabled = uploadedFiles.length === 0;
+  setStep(1);
+}
+
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag'); }
+function onDragLeave(e) { document.getElementById('dropZone').classList.remove('drag'); }
+function onDrop(e) {
+  e.preventDefault();
+  document.getElementById('dropZone').classList.remove('drag');
+  handleFiles(e.dataTransfer.files);
+}
+
+// --- Pipeline ---
+async function startPipeline() {
+  if (!uploadedFiles.length) return;
+  document.getElementById('parseBtn').disabled = true;
+  document.getElementById('formArea').style.display = 'none';
+  setPipelineStatus('', '');
+
+  // Step 1: OCR
+  setStep(2);
+  const ocrDiv = document.getElementById('ocrProgress');
+  ocrDiv.classList.add('show');
+  ocrTexts = [];
+
+  for (let i = 0; i < uploadedFiles.length; i++) {
+    const f = uploadedFiles[i];
+    setOcrMsg(`识别第 ${i+1}/${uploadedFiles.length} 张图片...`, 0);
+    try {
+      const result = await Tesseract.recognize(f, 'chi_sim+eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') {
+            const pct = Math.round(m.progress * 100);
+            setOcrMsg(`识别第 ${i+1}/${uploadedFiles.length} 张...`, pct);
+          }
+        }
+      });
+      ocrTexts.push(result.data.text);
+    } catch(e) {
+      ocrTexts.push('');
+    }
+  }
+
+  ocrDiv.classList.remove('show');
+  const fullText = ocrTexts.join('\n\n---\n\n').trim();
+
+  if (!fullText) {
+    setPipelineStatus('未能识别到文字，请检查图片清晰度', 'err');
+    document.getElementById('parseBtn').disabled = false;
+    setStep(1);
+    return;
+  }
+
+  // Show OCR text preview
+  document.getElementById('ocrTextPreview').textContent = fullText.slice(0, 600) + (fullText.length > 600 ? '...' : '');
+  document.getElementById('ocrTextPreview').style.display = 'block';
+
+  // Step 2: AI classify
+  const key = getApiKey();
+  if (!key) {
+    setStep(4);
+    setPipelineStatus('未配置 API Key，已跳过 AI 归类，请手动填写', 'info');
+    fillForm({ date: today() });
+    document.getElementById('formArea').style.display = '';
+    document.getElementById('parseBtn').disabled = false;
+    return;
+  }
+
+  setStep(3);
+  setPipelineStatus('正在 AI 归类...', 'info', true);
+
+  try {
+    const prompt = `以下是从微信聊天截图中提取的文字内容。请分析并提取留学咨询相关信息，返回JSON对象（只返回JSON，不要markdown代码块）：{"date":"聊天日期YYYY-MM-DD","wechat":"微信名","name":"真实姓名","school":"本科院校","major":"专业","gpa":"GPA","country":"目标国家","target":"目标院校项目","content":"申请内容100字内","intent":"意向备注50字内"}无法获取填空字符串。聊天内容：${fullText.slice(0,3000)}`;
+    const resp = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+      body: JSON.stringify({ model: 'Qwen/Qwen2.5-7B-Instruct', max_tokens: 1000,
+        messages: [{ role: 'system', content: '你是信息提取助手，只返回JSON。' }, { role: 'user', content: prompt }] })
+    });
+
+    if (!resp.ok) {
+      const errData = await resp.json().catch(() => ({}));
+      throw new Error(errData.error?.message || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const text = data.choices?.[0]?.message?.content || '';
+    const clean = text.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+    setStep(4);
+    fillForm(parsed);
+    setPipelineStatus('解析完成，请确认字段', 'ok');
+  } catch(e) {
+    setStep(4);
+    fillForm({ date: today() });
+    setPipelineStatus('AI 归类失败：' + e.message + '，请手动填写', 'err');
+  }
+
+  document.getElementById('formArea').style.display = '';
+  document.getElementById('parseBtn').disabled = false;
+}
+
+function fillManual() {
+  ocrTexts = [];
+  document.getElementById('ocrTextPreview').style.display = 'none';
+  fillForm({ date: today() });
+  document.getElementById('formArea').style.display = '';
+  setStep(4);
+}
+
+function fillForm(d) {
+  document.getElementById('f_date').value = d.date || today();
+  document.getElementById('f_wechat').value = d.wechat || '';
+  document.getElementById('f_name').value = d.name || '';
+  document.getElementById('f_school').value = d.school || '';
+  document.getElementById('f_major').value = d.major || '';
+  document.getElementById('f_gpa').value = d.gpa || '';
+  document.getElementById('f_country').value = d.country || '';
+  document.getElementById('f_target').value = d.target || '';
+  document.getElementById('f_content').value = d.content || '';
+  document.getElementById('f_intent').value = d.intent || '';
+}
+
+function saveRecord() {
+  const rec = {
+    id: Date.now(),
+    date: v('f_date'), wechat: v('f_wechat'), name: v('f_name'),
+    school: v('f_school'), major: v('f_major'), gpa: v('f_gpa'),
+    country: v('f_country'), target: v('f_target'),
+    content: v('f_content'), intent: v('f_intent'),
+  };
+  if (!rec.wechat && !rec.name) {
+    document.getElementById('saveStatus').textContent = '请至少填写微信名或姓名';
+    document.getElementById('saveStatus').className = 'status-inline status-err';
+    return;
+  }
+  records.push(rec);
+  persist();
+  toast('已保存 ✓', 'ok');
+  resetAll();
+}
+
+function resetAll() {
+  uploadedFiles = []; ocrTexts = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('parseBtn').disabled = true;
+  document.getElementById('formArea').style.display = 'none';
+  document.getElementById('ocrProgress').classList.remove('show');
+  document.getElementById('ocrTextPreview').style.display = 'none';
+  document.getElementById('saveStatus').textContent = '';
+  setPipelineStatus('', '');
+  setStep(1);
+}
+
+// --- Records ---
+function renderTable() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = records.filter(r => {
+    if (!q) return true;
+    return [r.wechat, r.name, r.school, r.major, r.country, r.target, r.content, r.intent]
+      .some(s => s && s.toLowerCase().includes(q));
+  });
+
+  document.getElementById('exportBtn').disabled = records.length === 0;
+  document.getElementById('nav-count').textContent = records.length;
+
+  if (!filtered.length) {
+    document.getElementById('tableContainer').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div>${records.length ? '没有匹配的记录' : '还没有记录'}</div></div>`;
+    return;
+  }
+
+  const rows = filtered.map(r => `<tr>
+    <td style="white-space:nowrap">${r.date || '<span class="td-muted">—</span>'}</td>
+    <td>
+      <div>${r.wechat || '<span class="td-muted">—</span>'}</div>
+      ${r.name ? `<div class="td-sub">${r.name}</div>` : ''}
+    </td>
+    <td>
+      <div>${r.school || '<span class="td-muted">—</span>'}</div>
+      ${r.major ? `<div class="td-sub">${r.major}</div>` : ''}
+      ${r.gpa ? `<div class="td-sub">GPA ${r.gpa}</div>` : ''}
+    </td>
+    <td>
+      ${r.country ? `<span class="tag">${r.country}</span> ` : ''}
+      <div class="td-sub" style="margin-top:3px">${r.target || ''}</div>
+    </td>
+    <td style="max-width:200px;font-size:12px;color:var(--text2)">${r.intent || r.content || '<span class="td-muted">—</span>'}</td>
+    <td><button class="del-btn" onclick="deleteRecord(${r.id})" title="删除">✕</button></td>
+  </tr>`).join('');
+
+  document.getElementById('tableContainer').innerHTML = `<table>
+    <thead><tr>
+      <th>日期</th><th>微信名 / 姓名</th><th>学术背景</th><th>目标</th><th>意向 / 备注</th><th></th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+}
+
+function deleteRecord(id) {
+  if (!confirm('确认删除这条记录？')) return;
+  records = records.filter(r => r.id !== id);
+  persist();
+  renderTable();
+  document.getElementById('nav-count').textContent = records.length;
+}
+
+// --- Excel export ---
+function exportExcel() {
+  if (!records.length) return;
+  const header = ['日期','微信名','真实姓名','本科院校','专业','GPA/均分','目标国家','目标院校/项目','申请内容','意向/备注'];
+  const rows = records.map(r => [r.date,r.wechat,r.name,r.school,r.major,r.gpa,r.country,r.target,r.content,r.intent]);
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows]);
+  ws['!cols'] = [11,14,10,16,12,10,10,18,30,26].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '学生档案');
+  XLSX.writeFile(wb, `留学咨询_学生档案_${today()}.xlsx`);
+  toast('Excel 已导出', 'ok');
+}
+
+// --- Excel import ---
+function importExcel() { document.getElementById('importInput').click(); }
+
+function handleImport(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      const keys = ['date','wechat','name','school','major','gpa','country','target','content','intent'];
+      let added = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || row.length === 0) continue;
+        const rec = { id: Date.now() + i };
+        keys.forEach((k, j) => { rec[k] = (row[j] || '').toString().trim(); });
+        if (!rec.wechat && !rec.name) continue;
+        records.push(rec);
+        added++;
+      }
+      persist();
+      document.getElementById('importNote').style.display = 'block';
+      document.getElementById('importCount').textContent = added;
+      renderTable();
+      toast(`已导入 ${added} 条记录`, 'ok');
+    } catch(e) {
+      toast('导入失败，请检查文件格式', 'err');
+    }
+    input.value = '';
+  };
+  reader.readAsBinaryString(file);
+}
+
+// --- Helpers ---
+function v(id) { return document.getElementById(id).value.trim(); }
+function today() { return new Date().toISOString().slice(0, 10); }
+function persist() {
+  localStorage.setItem('consult_records', JSON.stringify(records));
+  document.getElementById('nav-count').textContent = records.length;
+  document.getElementById('exportBtn') && (document.getElementById('exportBtn').disabled = records.length === 0);
+}
+
+function setStep(n) {
+  for (let i = 1; i <= 4; i++) {
+    const el = document.getElementById('step' + i);
+    el.classList.remove('active', 'done');
+    if (i < n) el.classList.add('done');
+    else if (i === n) el.classList.add('active');
+  }
+}
+
+function setOcrMsg(msg, pct) {
+  document.getElementById('ocrMsg').textContent = msg;
+  document.getElementById('ocrPct').textContent = pct + '%';
+  document.getElementById('ocrBar').style.width = pct + '%';
+}
+
+function setPipelineStatus(msg, type, spinner) {
+  const el = document.getElementById('pipelineStatus');
+  el.className = 'status-inline' + (type ? ' status-' + type : '');
+  el.innerHTML = (spinner ? '<span class="spinner"></span> ' : '') + msg;
+}
+
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show' + (type ? ' ' + type : '');
+  setTimeout(() => { el.className = 'toast'; }, 2500);
+}
+
+// Init
+updateApiStatus();
+document.getElementById('nav-count').textContent = records.length;
+document.getElementById('exportBtn') && (document.getElementById('exportBtn').disabled = records.length === 0);
+</script>
+</body>
+</html>
