@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>留学咨询 · 客户档案</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tesseract.js/4.1.1/tesseract.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #F7F5F0;
+  --surface: #FFFFFF;
+  --surface2: #F0EDE6;
+  --border: #E2DDD5;
+  --border2: #CBC5BB;
+  --text: #1A1714;
+  --text2: #6B6560;
+  --text3: #9E9891;
+  --accent: #2D5016;
+  --accent-light: #EAF0E4;
+  --accent-mid: #4A7C28;
+  --danger: #8B2020;
+  --danger-light: #FBF0F0;
+  --warn: #7A4F10;
+  --warn-light: #FBF4E8;
+  --radius: 10px;
+  --radius-lg: 16px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.04);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans','PingFang SC','Hiragino Sans GB',sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; font-size: 15px; }
+
+.app-layout { display: grid; grid-template-columns: 220px 1fr; min-height: 100vh; }
+
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 2rem 0; position: sticky; top: 0; height: 100vh; overflow-y: auto; display: flex; flex-direction: column; }
+.logo { padding: 0 1.5rem 1.5rem; border-bottom: 1px solid var(--border); margin-bottom: 1rem; }
+.logo-title { font-family: 'Noto Serif SC',serif; font-size: 17px; font-weight: 500; line-height: 1.4; }
+.logo-sub { font-size: 12px; color: var(--text3); margin-top: 3px; }
+.nav { flex: 1; padding: 0 0.75rem; }
+.nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: var(--radius); cursor: pointer; font-size: 14px; color: var(--text2); transition: all 0.15s; margin-bottom: 2px; }
+.nav-item:hover { background: var(--surface2); color: var(--text); }
+.nav-item.active { background: var(--accent-light); color: var(--accent); font-weight: 500; }
+.nav-icon { width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+.nav-badge { margin-left: auto; background: var(--accent-light); color: var(--accent-mid); font-size: 11px; padding: 1px 7px; border-radius: 99px; font-weight: 500; }
+.sidebar-bottom { padding: 1rem 1.25rem 0; border-top: 1px solid var(--border); margin-top: 1rem; }
+.api-status { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text3); cursor: pointer; padding: 8px 0; }
+.api-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--border2); flex-shrink: 0; }
+.api-dot.ok { background: #5A9E2F; }
+.api-dot.err { background: var(--danger); }
+.mobile-api-btn { display: none; }
+
+.main { padding: 2.5rem 2rem; max-width: 1100px; }
+.page { display: none; }
+.page.active { display: block; }
+.page-header { margin-bottom: 1.75rem; }
+.page-title { font-family: 'Noto Serif SC',serif; font-size: 22px; font-weight: 500; }
+.page-desc { font-size: 14px; color: var(--text2); margin-top: 5px; line-height: 1.6; }
+
+/* Upload */
+.mode-buttons { display: flex; gap: 10px; margin-bottom: 1.25rem; flex-wrap: wrap; }
+.mode-btn { flex: 1; min-width: 200px; padding: 1rem 1.25rem; border-radius: var(--radius-lg); border: 1.5px solid var(--border); background: var(--surface); cursor: pointer; text-align: left; transition: all 0.15s; }
+.mode-btn:hover { border-color: var(--accent-mid); background: var(--accent-light); }
+.mode-btn.selected { border-color: var(--accent); background: var(--accent-light); }
+.mode-btn-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 3px; }
+.mode-btn-desc { font-size: 12px; color: var(--text2); line-height: 1.5; }
+
+.upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius-lg); padding: 2rem 1.5rem; text-align: center; cursor: pointer; transition: all 0.2s; background: var(--surface); position: relative; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent-mid); background: var(--accent-light); }
+.upload-zone input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+.upload-icon-wrap { width: 48px; height: 48px; background: var(--surface2); border-radius: var(--radius); display: flex; align-items: center; justify-content: center; font-size: 20px; margin: 0 auto 12px; }
+.upload-title { font-size: 15px; font-weight: 500; }
+.upload-sub { font-size: 13px; color: var(--text3); margin-top: 4px; }
+.preview-grid { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; justify-content: center; }
+.preview-thumb { width: 72px; height: 72px; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); }
+
+/* Steps */
+.steps { display: flex; align-items: center; gap: 0; margin-bottom: 1.5rem; }
+.step { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text3); }
+.step.active { color: var(--accent); }
+.step.done { color: var(--text2); }
+.step-num { width: 22px; height: 22px; border-radius: 50%; background: var(--surface2); display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 500; flex-shrink: 0; }
+.step.active .step-num { background: var(--accent); color: white; }
+.step.done .step-num { background: var(--accent-light); color: var(--accent); }
+.step-line { flex: 1; height: 1px; background: var(--border); margin: 0 10px; }
+
+/* Progress */
+.ocr-progress { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem 1.5rem; margin: 1rem 0; display: none; }
+.ocr-progress.show { display: block; }
+.progress-bar-wrap { height: 4px; background: var(--surface2); border-radius: 99px; margin-top: 10px; overflow: hidden; }
+.progress-bar { height: 100%; background: var(--accent-mid); border-radius: 99px; transition: width 0.3s; width: 0%; }
+.progress-label { font-size: 13px; color: var(--text2); display: flex; justify-content: space-between; }
+
+/* Buttons */
+.btn { padding: 9px 18px; border-radius: var(--radius); border: 1px solid var(--border2); font-size: 14px; cursor: pointer; background: var(--surface); color: var(--text); font-family: inherit; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; }
+.btn:hover { background: var(--surface2); }
+.btn:active { transform: scale(0.98); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+.btn-primary { background: var(--accent); color: white; border-color: var(--accent); }
+.btn-primary:hover { background: var(--accent-mid); border-color: var(--accent-mid); }
+.btn-sm { padding: 6px 12px; font-size: 13px; }
+.btn-danger { color: var(--danger); border-color: #E8BABA; }
+.btn-danger:hover { background: var(--danger-light); }
+.btn-row { display: flex; gap: 8px; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+
+/* Form */
+.form-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.5rem; margin-top: 1.25rem; box-shadow: var(--shadow); }
+.form-section-title { font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.06em; text-transform: uppercase; margin-bottom: 12px; margin-top: 20px; }
+.form-section-title:first-child { margin-top: 0; }
+.form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.form-group { display: flex; flex-direction: column; gap: 5px; }
+.form-group.full { grid-column: 1 / -1; }
+.form-group label { font-size: 12px; color: var(--text2); font-weight: 500; }
+.form-group input, .form-group textarea {
+  font-family: inherit; font-size: 14px; padding: 8px 11px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface); color: var(--text); outline: none; transition: border-color 0.15s;
+}
+.form-group input:focus, .form-group textarea:focus { border-color: var(--accent-mid); }
+.form-group textarea { resize: vertical; min-height: 72px; line-height: 1.6; }
+.ocr-text-preview { background: var(--surface2); border-radius: var(--radius); padding: 10px 12px; font-size: 12px; line-height: 1.7; color: var(--text2); max-height: 120px; overflow-y: auto; border: 1px solid var(--border); white-space: pre-wrap; word-break: break-all; margin-bottom: 4px; }
+
+/* Status */
+.status-inline { font-size: 13px; padding: 4px 0; }
+.status-ok { color: #4A7C28; }
+.status-err { color: var(--danger); }
+.status-info { color: var(--text2); }
+.spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Records */
+.records-toolbar { display: flex; gap: 10px; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; }
+.search-input { flex: 1; min-width: 160px; font-family: inherit; font-size: 14px; padding: 8px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); outline: none; }
+.search-input:focus { border-color: var(--accent-mid); }
+
+.table-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: auto; box-shadow: var(--shadow); }
+table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 900px; }
+th { text-align: left; padding: 10px 12px; font-size: 11px; font-weight: 500; color: var(--text3); letter-spacing: 0.05em; text-transform: uppercase; background: var(--surface2); border-bottom: 1px solid var(--border); white-space: nowrap; }
+td { padding: 0; border-bottom: 1px solid var(--border); vertical-align: top; }
+tr:last-child td { border-bottom: none; }
+tbody tr:hover td { background: #FAFAF7; }
+
+/* Inline edit cells */
+.cell-input {
+  width: 100%; min-height: 38px; padding: 8px 12px;
+  font-family: inherit; font-size: 13px; color: var(--text);
+  background: transparent; border: none; outline: none;
+  resize: none; overflow: hidden; line-height: 1.5;
+  cursor: text;
+}
+.cell-input:focus { background: #FFFEF8; box-shadow: inset 0 0 0 2px var(--accent-mid); border-radius: 4px; }
+
+.del-cell { width: 36px; text-align: center; }
+.del-btn { opacity: 0; background: none; border: none; color: var(--danger); cursor: pointer; font-size: 15px; padding: 8px 6px; transition: all 0.1s; font-family: inherit; }
+tr:hover .del-btn { opacity: 0.5; }
+.del-btn:hover { opacity: 1 !important; }
+
+.empty-state { text-align: center; padding: 3rem 1rem; color: var(--text3); font-size: 14px; }
+.empty-icon { font-size: 30px; margin-bottom: 10px; }
+
+/* Batch result */
+.batch-result { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1.25rem; margin-top: 1rem; box-shadow: var(--shadow); }
+.batch-count { font-size: 14px; color: var(--text2); margin-bottom: 12px; }
+.batch-count strong { color: var(--accent); }
+
+/* Modal */
+.modal-overlay { position: fixed; inset: 0; background: rgba(10,8,5,0.45); display: none; align-items: center; justify-content: center; z-index: 100; }
+.modal-overlay.show { display: flex; }
+.modal { background: var(--surface); border-radius: var(--radius-lg); padding: 2rem; width: 90%; max-width: 460px; box-shadow: 0 8px 40px rgba(0,0,0,0.18); }
+.modal-title { font-family: 'Noto Serif SC',serif; font-size: 17px; font-weight: 500; margin-bottom: 8px; }
+.modal-desc { font-size: 13px; color: var(--text2); line-height: 1.7; margin-bottom: 1.25rem; }
+.modal-desc a { color: var(--accent); text-decoration: none; }
+.modal-label { font-size: 12px; color: var(--text2); font-weight: 500; margin-bottom: 5px; margin-top: 12px; display: block; }
+.modal input { width: 100%; font-family: inherit; font-size: 14px; padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); color: var(--text); outline: none; margin-bottom: 4px; }
+.modal input:focus { border-color: var(--accent-mid); }
+.modal-note { font-size: 12px; color: var(--text3); margin-bottom: 1.25rem; line-height: 1.6; margin-top: 8px; }
+
+/* Toast */
+.toast { position: fixed; bottom: 2rem; right: 2rem; background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: var(--radius); font-size: 14px; transform: translateY(8px); opacity: 0; transition: all 0.25s; z-index: 200; pointer-events: none; }
+.toast.show { transform: translateY(0); opacity: 1; }
+.toast.ok { background: var(--accent); }
+.toast.err { background: var(--danger); }
+
+.info-card { background: var(--warn-light); border: 1px solid #E8D0A8; border-radius: var(--radius); padding: 12px 14px; font-size: 13px; color: var(--warn); line-height: 1.6; margin-top: 1rem; }
+
+@media (max-width: 680px) {
+  .app-layout { grid-template-columns: 1fr; }
+  .sidebar { position: relative; height: auto; flex-direction: row; padding: 1rem; overflow-x: auto; }
+  .logo { display: none; }
+  .sidebar-bottom { display: none; }
+  .nav { display: flex; flex-direction: row; padding: 0; gap: 4px; }
+  .nav-item { white-space: nowrap; }
+  .mobile-api-btn { display: flex; margin-left: auto; }
+  .main { padding: 1.25rem 0.875rem; }
+  .form-grid { grid-template-columns: 1fr; }
+  .form-group.full { grid-column: 1; }
+  .mode-buttons { flex-direction: column; }
+  .mode-btn { min-width: unset; }
+}
+</style>
+</head>
+<body>
+<div class="app-layout">
+  <aside class="sidebar">
+    <div class="logo">
+      <div class="logo-title">留学咨询<br>客户档案</div>
+      <div class="logo-sub">Study Abroad CRM</div>
+    </div>
+    <nav class="nav">
+      <div class="nav-item active" onclick="goPage('add')">
+        <span class="nav-icon">＋</span><span>新增记录</span>
+      </div>
+      <div class="nav-item" onclick="goPage('records')">
+        <span class="nav-icon">≡</span><span>所有记录</span>
+        <span class="nav-badge" id="nav-count">0</span>
+      </div>
+      <div class="nav-item mobile-api-btn" onclick="openApiModal()">
+        <span class="nav-icon">⚙</span>
+        <span id="mobileApiText">配置 Key</span>
+        <span class="api-dot err" id="mobileApiDot" style="margin-left:4px"></span>
+      </div>
+    </nav>
+    <div class="sidebar-bottom">
+      <div class="api-status" onclick="openApiModal()">
+        <div class="api-dot" id="apiDot"></div>
+        <span id="apiStatusText">未配置 API Key</span>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <!-- Add page -->
+    <div class="page active" id="page-add">
+      <div class="page-header">
+        <div class="page-title">新增记录</div>
+        <div class="page-desc">选择模式后上传微信聊天截图，AI 自动提取信息。</div>
+      </div>
+
+      <div class="mode-buttons">
+        <div class="mode-btn selected" id="modeBtn-single" onclick="selectMode('single')">
+          <div class="mode-btn-title">单人模式</div>
+          <div class="mode-btn-desc">同一个学生的多张截图，提取后确认再保存</div>
+        </div>
+        <div class="mode-btn" id="modeBtn-batch" onclick="selectMode('batch')">
+          <div class="mode-btn-title">批量模式</div>
+          <div class="mode-btn-desc">多个学生的截图混合上传，AI 自动拆分直接导入</div>
+        </div>
+      </div>
+
+      <div class="steps" id="stepsBar">
+        <div class="step active" id="step1"><div class="step-num">1</div><span>上传截图</span></div>
+        <div class="step-line"></div>
+        <div class="step" id="step2"><div class="step-num">2</div><span>OCR 识别</span></div>
+        <div class="step-line"></div>
+        <div class="step" id="step3"><div class="step-num">3</div><span>AI 归类</span></div>
+        <div class="step-line"></div>
+        <div class="step" id="step4"><div class="step-num">4</div><span id="step4label">确认保存</span></div>
+      </div>
+
+      <div class="upload-zone" id="dropZone" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+        <input type="file" id="fileInput" accept="image/*" multiple onchange="handleFiles(this.files)">
+        <div class="upload-icon-wrap">📷</div>
+        <div class="upload-title">拖拽或点击上传截图</div>
+        <div class="upload-sub">支持多张 · PNG / JPG · 微信聊天截图</div>
+        <div class="preview-grid" id="previewGrid"></div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn btn-primary" id="parseBtn" onclick="startPipeline()" disabled>✦ 开始解析</button>
+        <button class="btn" onclick="fillManual()" id="manualBtn">手动填写</button>
+        <span class="status-inline" id="pipelineStatus"></span>
+      </div>
+
+      <div class="ocr-progress" id="ocrProgress">
+        <div class="progress-label"><span id="ocrMsg">识别中...</span><span id="ocrPct">0%</span></div>
+        <div class="progress-bar-wrap"><div class="progress-bar" id="ocrBar"></div></div>
+      </div>
+
+      <!-- Single mode form -->
+      <div id="formArea" style="display:none">
+        <div class="form-card">
+          <div class="ocr-text-preview" id="ocrTextPreview" style="display:none"></div>
+          <div class="form-section-title">基本信息</div>
+          <div class="form-grid">
+            <div class="form-group"><label>日期</label><input type="date" id="f_date"></div>
+            <div class="form-group"><label>学生昵称</label><input type="text" id="f_nickname" placeholder="微信昵称"></div>
+            <div class="form-group"><label>微信 / 电话</label><input type="text" id="f_contact" placeholder="联系方式（可空）"></div>
+            <div class="form-group"><label>院校 / 专业 / 年级</label><input type="text" id="f_edu" placeholder="如 马来西亚城市大学硕士"></div>
+            <div class="form-group"><label>业务类型</label><input type="text" id="f_biz" placeholder="如 博士论文小时课"></div>
+            <div class="form-group"><label>成单意向</label><input type="text" id="f_intent" placeholder="如 轻微意向、无意向"></div>
+            <div class="form-group"><label>渠道来源</label><input type="text" id="f_channel" placeholder="怎么找到你的（可空）"></div>
+            <div class="form-group full"><label>备注（问题顾虑等）</label><textarea id="f_note" placeholder="客户问题、顾虑、关键信息..."></textarea></div>
+            <div class="form-group full"><label>回访情况</label><textarea id="f_followup" placeholder="跟进记录..." style="min-height:56px"></textarea></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveRecord()">保存记录</button>
+          <button class="btn" onclick="resetAll()">重置</button>
+          <span class="status-inline" id="saveStatus"></span>
+        </div>
+      </div>
+
+      <!-- Batch mode result -->
+      <div id="batchResult" style="display:none">
+        <div class="batch-result">
+          <div class="batch-count" id="batchCount"></div>
+          <div id="batchPreview"></div>
+        </div>
+        <div class="btn-row">
+          <button class="btn btn-primary" onclick="saveBatch()">全部导入记录</button>
+          <button class="btn" onclick="resetAll()">重置</button>
+          <span class="status-inline" id="batchStatus"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Records page -->
+    <div class="page" id="page-records">
+      <div class="page-header">
+        <div class="page-title">所有记录</div>
+        <div class="page-desc">点击任意单元格直接编辑，修改自动保存。</div>
+      </div>
+      <div class="records-toolbar">
+        <input class="search-input" id="searchInput" placeholder="搜索昵称、院校、业务、备注..." oninput="renderTable()">
+        <button class="btn btn-primary btn-sm" onclick="exportExcel()" id="exportBtn" disabled>导出 Excel</button>
+        <button class="btn btn-sm" onclick="importExcel()">导入 Excel</button>
+        <input type="file" id="importInput" accept=".xlsx,.xls" style="display:none" onchange="handleImport(this)">
+      </div>
+      <div class="table-wrap">
+        <div id="tableContainer">
+          <div class="empty-state"><div class="empty-icon">📋</div><div>还没有记录</div></div>
+        </div>
+      </div>
+      <div class="info-card" id="importNote" style="display:none">
+        已导入 <strong id="importCount">0</strong> 条记录，与现有数据合并。
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- API Key Modal -->
+<div class="modal-overlay" id="apiModal">
+  <div class="modal">
+    <div class="modal-title">设置</div>
+    <div class="modal-desc">
+      AI 归类需要硅基流动 API Key。前往
+      <a href="https://cloud.siliconflow.cn" target="_blank">cloud.siliconflow.cn</a>
+      注册获取，国内直接访问，有免费额度。
+    </div>
+    <label class="modal-label">硅基流动 API Key</label>
+    <input type="password" id="apiKeyInput" placeholder="sk-...">
+    <label class="modal-label" style="margin-top:14px">我的微信名（用于排除自己）</label>
+    <input type="text" id="myWechatInput" placeholder="填你自己的微信昵称">
+    <div class="modal-note">Key 和微信名均仅保存在本地浏览器，不会上传到任何服务器。</div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-primary" onclick="saveSettings()">保存</button>
+      <button class="btn" onclick="closeApiModal()">取消</button>
+      <button class="btn btn-danger btn-sm" onclick="clearSettings()" style="margin-left:auto">清除</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Data ──
+let records = JSON.parse(localStorage.getItem('crm_records') || '[]');
+let uploadedFiles = [];
+let ocrTexts = [];
+let currentMode = 'single';
+let batchPending = [];
+
+const FIELDS = ['date','nickname','contact','edu','biz','intent','channel','note','followup'];
+const HEADERS = ['日期','学生昵称','微信/电话','院校/专业/年级','业务类型','成单意向','渠道来源','备注','回访情况'];
+
+// ── Nav ──
+function goPage(p) {
+  document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
+  document.getElementById('page-' + p).classList.add('active');
+  document.querySelectorAll('.nav-item').forEach((el, i) => {
+    el.classList.toggle('active', (i===0&&p==='add')||(i===1&&p==='records'));
+  });
+  if (p === 'records') renderTable();
+}
+
+// ── Mode ──
+function selectMode(m) {
+  currentMode = m;
+  document.getElementById('modeBtn-single').classList.toggle('selected', m==='single');
+  document.getElementById('modeBtn-batch').classList.toggle('selected', m==='batch');
+  document.getElementById('manualBtn').style.display = m==='single' ? '' : 'none';
+  document.getElementById('step4label').textContent = m==='single' ? '确认保存' : '直接导入';
+  resetAll();
+}
+
+// ── Settings ──
+function getApiKey() { return localStorage.getItem('crm_api_key') || ''; }
+function getMyWechat() { return localStorage.getItem('crm_my_wechat') || ''; }
+
+function updateApiStatus() {
+  const key = getApiKey();
+  const dot = document.getElementById('apiDot');
+  const txt = document.getElementById('apiStatusText');
+  const mdot = document.getElementById('mobileApiDot');
+  const mtxt = document.getElementById('mobileApiText');
+  if (key) {
+    dot.className = 'api-dot ok'; txt.textContent = 'API Key 已配置';
+    if(mdot) { mdot.className = 'api-dot ok'; }
+    if(mtxt) mtxt.textContent = '设置';
+  } else {
+    dot.className = 'api-dot err'; txt.textContent = '未配置 API Key';
+    if(mdot) { mdot.className = 'api-dot err'; }
+    if(mtxt) mtxt.textContent = '配置 Key';
+  }
+}
+
+function openApiModal() {
+  document.getElementById('apiKeyInput').value = getApiKey();
+  document.getElementById('myWechatInput').value = getMyWechat();
+  document.getElementById('apiModal').classList.add('show');
+}
+function closeApiModal() { document.getElementById('apiModal').classList.remove('show'); }
+function saveSettings() {
+  const k = document.getElementById('apiKeyInput').value.trim();
+  const w = document.getElementById('myWechatInput').value.trim();
+  if (k) localStorage.setItem('crm_api_key', k); else localStorage.removeItem('crm_api_key');
+  if (w) localStorage.setItem('crm_my_wechat', w); else localStorage.removeItem('crm_my_wechat');
+  updateApiStatus();
+  toast('设置已保存', 'ok');
+  closeApiModal();
+}
+function clearSettings() {
+  localStorage.removeItem('crm_api_key');
+  localStorage.removeItem('crm_my_wechat');
+  document.getElementById('apiKeyInput').value = '';
+  document.getElementById('myWechatInput').value = '';
+  updateApiStatus();
+  toast('已清除');
+  closeApiModal();
+}
+
+// ── File handling ──
+function handleFiles(files) {
+  uploadedFiles = Array.from(files);
+  ocrTexts = [];
+  const grid = document.getElementById('previewGrid');
+  grid.innerHTML = '';
+  uploadedFiles.forEach(f => {
+    const img = document.createElement('img');
+    img.src = URL.createObjectURL(f);
+    img.className = 'preview-thumb';
+    grid.appendChild(img);
+  });
+  document.getElementById('parseBtn').disabled = uploadedFiles.length === 0;
+  setStep(1);
+}
+function onDragOver(e) { e.preventDefault(); document.getElementById('dropZone').classList.add('drag'); }
+function onDragLeave() { document.getElementById('dropZone').classList.remove('drag'); }
+function onDrop(e) { e.preventDefault(); document.getElementById('dropZone').classList.remove('drag'); handleFiles(e.dataTransfer.files); }
+
+// ── Pipeline ──
+async function startPipeline() {
+  if (!uploadedFiles.length) return;
+  document.getElementById('parseBtn').disabled = true;
+  document.getElementById('formArea').style.display = 'none';
+  document.getElementById('batchResult').style.display = 'none';
+  setPipelineStatus('', '');
+
+  setStep(2);
+  const ocrDiv = document.getElementById('ocrProgress');
+  ocrDiv.classList.add('show');
+  ocrTexts = [];
+
+  for (let i = 0; i < uploadedFiles.length; i++) {
+    setOcrMsg(`识别第 ${i+1}/${uploadedFiles.length} 张...`, 0);
+    try {
+      const result = await Tesseract.recognize(uploadedFiles[i], 'chi_sim+eng', {
+        logger: m => {
+          if (m.status === 'recognizing text') setOcrMsg(`识别第 ${i+1}/${uploadedFiles.length} 张...`, Math.round(m.progress*100));
+        }
+      });
+      ocrTexts.push(result.data.text);
+    } catch(e) { ocrTexts.push(''); }
+  }
+
+  ocrDiv.classList.remove('show');
+  const fullText = ocrTexts.join('\n\n---\n\n').trim();
+
+  if (!fullText) {
+    setPipelineStatus('未识别到文字，请检查图片清晰度', 'err');
+    document.getElementById('parseBtn').disabled = false;
+    setStep(1);
+    return;
+  }
+
+  const key = getApiKey();
+  if (!key) {
+    if (currentMode === 'single') {
+      document.getElementById('ocrTextPreview').textContent = fullText.slice(0, 500) + (fullText.length>500?'...':'');
+      document.getElementById('ocrTextPreview').style.display = 'block';
+      fillForm({ date: today() });
+      document.getElementById('formArea').style.display = '';
+    }
+    setStep(4);
+    setPipelineStatus('未配置 API Key，请手动填写', 'info');
+    document.getElementById('parseBtn').disabled = false;
+    return;
+  }
+
+  setStep(3);
+  setPipelineStatus('AI 分析中...', 'info', true);
+
+  if (currentMode === 'single') {
+    await runSingleAI(fullText);
+  } else {
+    await runBatchAI(fullText);
+  }
+
+  document.getElementById('parseBtn').disabled = false;
+}
+
+async function runSingleAI(fullText) {
+  const myWechat = getMyWechat();
+  const excludeNote = myWechat ? `注意："${myWechat}"是咨询顾问本人，不是学生，不要将其作为学生昵称。` : '';
+  const prompt = `以下是微信聊天记录的OCR文字。请提取留学咨询客户信息，返回JSON（只返回JSON，不要代码块）：
+{"date":"日期YYYY-MM-DD，无则${today()}","nickname":"学生微信昵称","contact":"微信号或电话，无则空","edu":"院校/专业/年级，如 马来西亚城市大学硕士，精简","biz":"业务类型，如 博士论文小时课，精简","intent":"成单意向，如 轻微意向/无意向，精简","channel":"渠道来源，无则空","note":"备注问题顾虑，30字内精简","followup":"回访跟进情况，30字内精简"}
+${excludeNote}
+聊天内容：
+${fullText.slice(0, 3000)}`;
+
+  try {
+    const data = await callAI(prompt);
+    const text = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    setStep(4);
+    document.getElementById('ocrTextPreview').textContent = fullText.slice(0,500)+(fullText.length>500?'...':'');
+    document.getElementById('ocrTextPreview').style.display = 'block';
+    fillForm(parsed);
+    document.getElementById('formArea').style.display = '';
+    setPipelineStatus('解析完成，请确认', 'ok');
+  } catch(e) {
+    setStep(4);
+    fillForm({ date: today() });
+    document.getElementById('formArea').style.display = '';
+    setPipelineStatus('AI 解析失败，请手动填写', 'err');
+  }
+}
+
+async function runBatchAI(fullText) {
+  const myWechat = getMyWechat();
+  const excludeNote = myWechat ? `注意："${myWechat}"是咨询顾问本人，不是学生。` : '';
+  const prompt = `以下是多个微信聊天记录混合的OCR文字（用---分隔不同截图）。请识别其中有几个不同的咨询客户，为每个客户提取信息，返回JSON数组（只返回JSON数组，不要代码块）：
+[{"date":"日期YYYY-MM-DD，无则${today()}","nickname":"学生昵称","contact":"联系方式，无则空","edu":"院校专业年级，精简","biz":"业务类型，精简","intent":"成单意向，精简","channel":"渠道，无则空","note":"备注顾虑，30字内","followup":"回访情况，30字内"}]
+${excludeNote}
+内容：
+${fullText.slice(0, 4000)}`;
+
+  try {
+    const data = await callAI(prompt);
+    const text = data.choices?.[0]?.message?.content || '';
+    const parsed = JSON.parse(text.replace(/```json|```/g,'').trim());
+    const arr = Array.isArray(parsed) ? parsed : [parsed];
+    batchPending = arr;
+    setStep(4);
+    renderBatchPreview(arr);
+    document.getElementById('batchResult').style.display = '';
+    setPipelineStatus('', '');
+  } catch(e) {
+    setStep(4);
+    setPipelineStatus('AI 解析失败：' + e.message, 'err');
+  }
+}
+
+async function callAI(prompt) {
+  const key = getApiKey();
+  const resp = await fetch('https://api.siliconflow.cn/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${key}` },
+    body: JSON.stringify({
+      model: 'Qwen/Qwen2.5-7B-Instruct',
+      max_tokens: 1500,
+      messages: [
+        { role: 'system', content: '你是信息提取助手，只返回JSON，不返回任何其他内容。' },
+        { role: 'user', content: prompt }
+      ]
+    })
+  });
+  if (!resp.ok) {
+    const err = await resp.json().catch(()=>({}));
+    throw new Error(err.error?.message || `HTTP ${resp.status}`);
+  }
+  return await resp.json();
+}
+
+function renderBatchPreview(arr) {
+  document.getElementById('batchCount').innerHTML = `识别到 <strong>${arr.length}</strong> 个客户，导入后可在记录表格中直接编辑修改`;
+  const rows = arr.map((r,i) => `
+    <div style="padding:10px 0;border-bottom:1px solid var(--border);font-size:13px;${i===arr.length-1?'border-bottom:none':''}">
+      <div style="font-weight:500;color:var(--text);margin-bottom:4px">${r.nickname||'未知昵称'} <span style="font-size:11px;color:var(--text3);font-weight:400">${r.date||''}</span></div>
+      <div style="color:var(--text2);line-height:1.6">${[r.edu,r.biz,r.intent].filter(Boolean).join(' · ')}</div>
+      ${r.note?`<div style="color:var(--text3);font-size:12px;margin-top:2px">${r.note}</div>`:''}
+    </div>`).join('');
+  document.getElementById('batchPreview').innerHTML = rows;
+}
+
+function saveBatch() {
+  if (!batchPending.length) return;
+  batchPending.forEach(r => {
+    records.push({ id: Date.now() + Math.random(), ...r });
+  });
+  persist();
+  toast(`已导入 ${batchPending.length} 条记录`, 'ok');
+  batchPending = [];
+  resetAll();
+}
+
+// ── Single form ──
+function fillManual() {
+  fillForm({ date: today() });
+  document.getElementById('formArea').style.display = '';
+  document.getElementById('ocrTextPreview').style.display = 'none';
+  setStep(4);
+}
+
+function fillForm(d) {
+  document.getElementById('f_date').value = d.date || today();
+  document.getElementById('f_nickname').value = d.nickname || '';
+  document.getElementById('f_contact').value = d.contact || '';
+  document.getElementById('f_edu').value = d.edu || '';
+  document.getElementById('f_biz').value = d.biz || '';
+  document.getElementById('f_intent').value = d.intent || '';
+  document.getElementById('f_channel').value = d.channel || '';
+  document.getElementById('f_note').value = d.note || '';
+  document.getElementById('f_followup').value = d.followup || '';
+}
+
+function saveRecord() {
+  const rec = {
+    id: Date.now(),
+    date: v('f_date'), nickname: v('f_nickname'), contact: v('f_contact'),
+    edu: v('f_edu'), biz: v('f_biz'), intent: v('f_intent'),
+    channel: v('f_channel'), note: v('f_note'), followup: v('f_followup'),
+  };
+  if (!rec.nickname) { setSaveStatus('请填写学生昵称', 'err'); return; }
+  records.push(rec);
+  persist();
+  toast('已保存', 'ok');
+  resetAll();
+}
+
+function resetAll() {
+  uploadedFiles = []; ocrTexts = []; batchPending = [];
+  document.getElementById('previewGrid').innerHTML = '';
+  document.getElementById('fileInput').value = '';
+  document.getElementById('parseBtn').disabled = true;
+  document.getElementById('formArea').style.display = 'none';
+  document.getElementById('batchResult').style.display = 'none';
+  document.getElementById('ocrProgress').classList.remove('show');
+  document.getElementById('ocrTextPreview').style.display = 'none';
+  document.getElementById('saveStatus').textContent = '';
+  setPipelineStatus('', '');
+  setStep(1);
+}
+
+// ── Records table (inline edit) ──
+function renderTable() {
+  const q = (document.getElementById('searchInput').value || '').trim().toLowerCase();
+  const filtered = records.filter(r => {
+    if (!q) return true;
+    return FIELDS.some(f => r[f] && r[f].toLowerCase().includes(q));
+  });
+
+  document.getElementById('exportBtn').disabled = records.length === 0;
+  document.getElementById('nav-count').textContent = records.length;
+
+  if (!filtered.length) {
+    document.getElementById('tableContainer').innerHTML = `<div class="empty-state"><div class="empty-icon">📋</div><div>${records.length?'没有匹配记录':'还没有记录'}</div></div>`;
+    return;
+  }
+
+  const ths = [...HEADERS, ''].map(h => `<th>${h}</th>`).join('');
+  const trs = filtered.map(r => {
+    const cells = FIELDS.map(f => {
+      const isLong = ['note','followup','edu'].includes(f);
+      return `<td><textarea class="cell-input" data-id="${r.id}" data-field="${f}" rows="1" oninput="autoResize(this);saveCell(this)">${escHtml(r[f]||'')}</textarea></td>`;
+    }).join('');
+    return `<tr>${cells}<td class="del-cell"><button class="del-btn" onclick="deleteRecord(${r.id})">✕</button></td></tr>`;
+  }).join('');
+
+  document.getElementById('tableContainer').innerHTML = `<table><thead><tr>${ths}</tr></thead><tbody>${trs}</tbody></table>`;
+  document.querySelectorAll('.cell-input').forEach(autoResize);
+}
+
+function autoResize(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+function saveCell(el) {
+  const id = Number(el.dataset.id);
+  const field = el.dataset.field;
+  const rec = records.find(r => r.id === id);
+  if (rec) { rec[field] = el.value; persist(); }
+}
+
+function deleteRecord(id) {
+  if (!confirm('确认删除这条记录？')) return;
+  records = records.filter(r => r.id !== id);
+  persist();
+  renderTable();
+}
+
+// ── Excel ──
+function exportExcel() {
+  if (!records.length) return;
+  const ws = XLSX.utils.aoa_to_sheet([HEADERS, ...records.map(r => FIELDS.map(f => r[f]||''))]);
+  ws['!cols'] = [10,12,12,20,14,12,12,28,28].map(w=>({wch:w}));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, '客户档案');
+  XLSX.writeFile(wb, `留学咨询_客户档案_${today()}.xlsx`);
+  toast('Excel 已导出', 'ok');
+}
+
+function importExcel() { document.getElementById('importInput').click(); }
+function handleImport(input) {
+  const file = input.files[0]; if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: 'binary' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header: 1 });
+      let added = 0;
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (!row || !row.length) continue;
+        const rec = { id: Date.now() + i };
+        FIELDS.forEach((f, j) => { rec[f] = (row[j]||'').toString().trim(); });
+        if (!rec.nickname) continue;
+        records.push(rec); added++;
+      }
+      persist();
+      document.getElementById('importNote').style.display = 'block';
+      document.getElementById('importCount').textContent = added;
+      renderTable();
+      toast(`已导入 ${added} 条`, 'ok');
+    } catch(e) { toast('导入失败，请检查格式', 'err'); }
+    input.value = '';
+  };
+  reader.readAsBinaryString(file);
+}
+
+// ── Helpers ──
+function v(id) { return (document.getElementById(id).value||'').trim(); }
+function today() { return new Date().toISOString().slice(0,10); }
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+function persist() {
+  localStorage.setItem('crm_records', JSON.stringify(records));
+  document.getElementById('nav-count').textContent = records.length;
+  const eb = document.getElementById('exportBtn');
+  if (eb) eb.disabled = records.length === 0;
+}
+function setStep(n) {
+  for (let i=1; i<=4; i++) {
+    const el = document.getElementById('step'+i);
+    el.classList.remove('active','done');
+    if (i<n) el.classList.add('done');
+    else if (i===n) el.classList.add('active');
+  }
+}
+function setOcrMsg(msg, pct) {
+  document.getElementById('ocrMsg').textContent = msg;
+  document.getElementById('ocrPct').textContent = pct+'%';
+  document.getElementById('ocrBar').style.width = pct+'%';
+}
+function setPipelineStatus(msg, type, spinner) {
+  const el = document.getElementById('pipelineStatus');
+  el.className = 'status-inline'+(type?' status-'+type:'');
+  el.innerHTML = (spinner?'<span class="spinner"></span> ':'')+msg;
+}
+function setSaveStatus(msg, type) {
+  const el = document.getElementById('saveStatus');
+  el.textContent = msg;
+  el.className = 'status-inline'+(type?' status-'+type:'');
+}
+function toast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast show'+(type?' '+type:'');
+  setTimeout(()=>{ el.className='toast'; }, 2500);
+}
+
+// ── Init ──
+updateApiStatus();
+document.getElementById('nav-count').textContent = records.length;
+selectMode('single');
+</script>
+</body>
+</html>
